@@ -1,0 +1,34 @@
+get_account() {
+  cli keys show "${1}" -a
+}
+
+get_balance() {
+  cli query account "${1}" | jq -r ".value .coins"
+}
+
+log_balance() {
+  local account
+  account=$(get_account "${1}")
+  local account_b
+  account_b=$(get_balance "${account}")
+  echo "${1} - ${account_b}"
+}
+
+admin=$(get_account admin)
+
+printf "\ncreate user\n"
+user=$(yes | cli keys add user  2>&1 | jq -r ".address")
+echo "user is ${user}"
+
+log_balance admin
+log_balance user
+
+printf "\nsend 5 tokens to user and wait\n"
+tx=$(cli --chain-id name tx send ${admin} ${user} 5nametoken --gas-prices=0.00005nametoken -y | jq -r ".txhash")
+sleep 7
+
+printf "\ncheck tx passed\n"
+cli query tx "${tx}"
+
+log_balance admin
+log_balance user

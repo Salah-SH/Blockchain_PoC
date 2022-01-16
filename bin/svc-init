@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+rm -rf "${ROOT}/data"
+
+printf "\ninit\n"
+svc init test --chain-id=namechain 2>&1 | jq -C
+
+# TODO : explain config items
+printf "\nconfig\n"
+#specify the output format
+cli config output json
+cli config indent true
+# Trust connected full node : don't verify proofs for responses: if the node is distrusted, various checks are done on the response received from the node on the executed queries
+cli config trust-node true
+# The keyring holds the private/public keypairs. backend are where the private keys are stored, the default is os,
+# here we store the account keys the app's configuration directory unencrypted.
+cli config keyring-backend test
+cli config chain-id namechain
+
+printf "\ncreate admin\n"
+admin=$(cli keys add admin 2>&1 | jq -r ".address")
+echo "${admin}"
+
+printf "\nadd users\n"
+svc add-genesis-account "${admin}" 1000nametoken,100000000stake
+svc add-admin "${admin}"
+# TODO : explain
+# This commandis used to add a validator node to the chain. In this case the admin has become a validator aperator(the account that controls the validator node)
+#this command also links the operator account (in our case "admin") with a Tendermint node pubkey that will be used for signing blocks.
+printf "\ngenerate tx\n"
+svc gentx --name admin  --keyring-backend test
+
+printf "\nlog tx\n"
+svc collect-gentxs
+
+# TODO : why now ?
+#to make sure the genesis file is correct and contains all the needed configuration
+printf "\nvalidate genesis\n"
+svc validate-genesis
